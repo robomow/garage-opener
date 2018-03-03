@@ -18,13 +18,12 @@ GPIO.setup(17,GPIO.OUT)
 GPIO.setup(4,GPIO.IN,pull_up_down=GPIO.PUD_UP)
 
 #
-# Initialize servo motor
+# Initialize servo motor that closes the door
 #
 garageCloser = GPIO.PWM(17,50)
-garageCloser.start(7.5)
 
 #
-# Initialize stepper motor
+# Initialize stepper motor that opens the garage
 #
 # create a default object, no changes to I2C address or frequency
 mh = Adafruit_MotorHAT()
@@ -60,22 +59,23 @@ class GarageOpener:
 
     def closeGarageDoor(self):
        print("Opening Garage Door")
-       servoMotor.ChangeDutyCycle(6.0)
-       time.sleep(1)
+       garageCloser.start(7.5)
+       garageCloser.ChangeDutyCycle(6.0)
+       time.sleep(0.5)
        print("6.0")
-       servoMotor.ChangeDutyCycle(4.5)
+       garageCloser.ChangeDutyCycle(4.5)
        print("4.5")
-       time.sleep(1)
-       servoMotor.ChangeDutyCycle(3.5)
+       time.sleep(0.5)
+       garageCloser.ChangeDutyCycle(3.5)
        print("3.5")
-       time.sleep(1)
-       servoMotor.ChangeDutyCycle(2.5)
+       time.sleep(0.5)
+       garageCloser.ChangeDutyCycle(2.5)
        print("2.5")
-       time.sleep(1)
-       #servoMotor.ChangeDutyCycle(2.5)
+       time.sleep(0.5)
+       garageCloser.ChangeDutyCycle(2.5)
        #print("2.5")
        time.sleep(2)
-       servoMotor.ChangeDutyCycle(12.5)
+       garageCloser.ChangeDutyCycle(12.5)
        print("12.5")
        time.sleep(2)
      
@@ -84,7 +84,11 @@ class GarageOpener:
        cnt=0
        while (cnt<4):
            cnt = cnt + 1
-           garageCloser.step(100, Adafruit_MotorHAT.BACKWARD, Adafruit_MotorHAT.DOUBLE)
+           garageOpener.step(100, Adafruit_MotorHAT.BACKWARD, Adafruit_MotorHAT.DOUBLE)
+       cnt=0
+       while (cnt<3):
+           cnt = cnt + 1
+           garageOpener.step(100, Adafruit_MotorHAT.FORWARD, Adafruit_MotorHAT.DOUBLE)
 
 
     def testLimitSwitch(self):
