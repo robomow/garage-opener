@@ -1,3 +1,7 @@
+
+from Adafruit_MotorHAT import Adafruit_MotorHAT, Adafruit_DCMotor, Adafruit_StepperMotor
+import atexit
+
 from interface import implements, Interface
 import GarageMonitorSubscriber
 from GarageMonitor import GarageMonitor
@@ -6,12 +10,36 @@ import argparse
 import RPi.GPIO as GPIO
 import time
 
+#
+# Initialize limit switch
+#
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(17,GPIO.OUT)
 GPIO.setup(4,GPIO.IN,pull_up_down=GPIO.PUD_UP)
 
-servoMotor = GPIO.PWM(17,50)
-servoMotor.start(7.5)
+#
+# Initialize servo motor
+#
+garageCloser = GPIO.PWM(17,50)
+garageCloser.start(7.5)
+
+#
+# Initialize stepper motor
+#
+# create a default object, no changes to I2C address or frequency
+mh = Adafruit_MotorHAT()
+
+# recommended for auto-disabling motors on shutdown!
+def turnOffMotors():
+    mh.getMotor(1).run(Adafruit_MotorHAT.RELEASE)
+    mh.getMotor(2).run(Adafruit_MotorHAT.RELEASE)
+    mh.getMotor(3).run(Adafruit_MotorHAT.RELEASE)
+    mh.getMotor(4).run(Adafruit_MotorHAT.RELEASE)
+
+atexit.register(turnOffMotors)
+
+garageOpener = mh.getStepper(200, 2)  # 200 steps/rev, motor port #1
+garageOpener.setSpeed(100)             # 30 RPM
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video",
@@ -30,7 +58,7 @@ class GarageOpener:
     def notifyVehicleDetected(self, image):
         print("Vehicle Detected...time to open the door")
 
-    def openGarageDoor(self):
+    def closeGarageDoor(self):
        print("Opening Garage Door")
        servoMotor.ChangeDutyCycle(6.0)
        time.sleep(1)
@@ -51,12 +79,13 @@ class GarageOpener:
        print("12.5")
        time.sleep(2)
      
-    def closeGarageDoor(self):
+    def openGarageDoor(self):
        print("Closing Garage Door")
-       servoMotor.ChangeDutyCycle(12.5)
-       time.sleep(4)
-       servoMotor.ChangeDutyCycle(6.0)
-       time.sleep(3)
+       cnt=0
+       while (cnt<4):
+           cnt = cnt + 1
+           garageCloser.step(100, Adafruit_MotorHAT.BACKWARD, Adafruit_MotorHAT.DOUBLE)
+
 
     def testLimitSwitch(self):
        print("Testing Limit Switch")
