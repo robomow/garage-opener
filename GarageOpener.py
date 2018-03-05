@@ -10,6 +10,8 @@ import argparse
 import RPi.GPIO as GPIO
 import time
 
+from time import sleep
+
 #
 # Initialize limit switch
 #
@@ -53,34 +55,74 @@ args = vars(ap.parse_args())
 
 
 class GarageOpener:
+    doorOpen = False
+    # Limit Switch variables
+    pushedDown = 0
+    releasedUp = 1
+    prev_input = 0
 
     def notifyVehicleDetected(self, image):
-        print("Vehicle Detected...time to open the door")
+        a=1
+        #print("Vehicle Detected...time to open the door")
+
+    def notifyVehicleEntryDetected(self, image):
+        print("Vehicle Entry Detected...time to open the door")
+        if (GarageOpener.doorOpen == False):
+            self.openGarageDoor()
 
     def closeGarageDoor(self):
+       print("Closing Garage Door")
+       GarageOpener.doorOpen = False
+       garageCloser.start(7.5)
+       garageCloser.ChangeDutyCycle(2.5)
+       time.sleep(2.0)
+       garageCloser.ChangeDutyCycle(7.5)
+       print("7.5")
+       time.sleep(2)
+
+    def closeGarageDoor2(self):
        print("Opening Garage Door")
        garageCloser.start(7.5)
+       garageCloser.ChangeDutyCycle(6.5)
+       time.sleep(0.2)
+       print("6.5")
        garageCloser.ChangeDutyCycle(6.0)
-       time.sleep(0.5)
+       time.sleep(0.2)
        print("6.0")
+       garageCloser.ChangeDutyCycle(5.5)
+       time.sleep(0.2)
+       print("5.5")
+       garageCloser.ChangeDutyCycle(5.0)
+       time.sleep(0.2)
+       print("5.0")
        garageCloser.ChangeDutyCycle(4.5)
        print("4.5")
-       time.sleep(0.5)
+       time.sleep(0.2)
+       garageCloser.ChangeDutyCycle(4.0)
+       print("4.0")
+       time.sleep(0.2)
        garageCloser.ChangeDutyCycle(3.5)
        print("3.5")
-       time.sleep(0.5)
+       time.sleep(0.2)
+       garageCloser.ChangeDutyCycle(3.0)
+       print("3.0")
+       time.sleep(0.2)
        garageCloser.ChangeDutyCycle(2.5)
        print("2.5")
-       time.sleep(0.5)
-       garageCloser.ChangeDutyCycle(2.5)
+       time.sleep(0.2)
+       garageCloser.ChangeDutyCycle(2.0)
+       print("2.0")
+       time.sleep(0.2)
+       garageCloser.ChangeDutyCycle(0.0)
        #print("2.5")
        time.sleep(2)
-       garageCloser.ChangeDutyCycle(12.5)
+       garageCloser.ChangeDutyCycle(7.5)
        print("12.5")
        time.sleep(2)
      
     def openGarageDoor(self):
-       print("Closing Garage Door")
+       print("Opening Garage Door")
+       GarageOpener.doorOpen = True
        cnt=0
        while (cnt<4):
            cnt = cnt + 1
@@ -91,37 +133,37 @@ class GarageOpener:
            garageOpener.step(100, Adafruit_MotorHAT.FORWARD, Adafruit_MotorHAT.DOUBLE)
 
 
-    def testLimitSwitch(self):
+    def checkLimitSwitch(self):
        print("Testing Limit Switch")
 
        try:
-          pushedDown = 0
-          releasedUp = 1
-          prev_input = 0
-          while True:
+          #while True:
              input = GPIO.input(4)
              print("Input="+str(input))
-             if ((not pushedDown) and input):
+             if ((not GarageOpener.pushedDown) and input):
                  print("Button Pressed Down rotating 90 degrees")
                  print("Input="+str(input))
+
+                 print("Robomow has successfully parked in garage.")
+                 print("   Lets wait 60 seconds and close the door")
+                 time.sleep(5)
+
                  time.sleep(1)
-                 self.openGarageDoor()
-                 pushedDown = 1
-                 releasedUp = 1
-             elif ((releasedUp) and not input):
+                 self.closeGarageDoor()
+                 GarageOpener.pushedDown = 1
+                 GarageOpener.releasedUp = 1
+             elif ((GarageOpener.releasedUp) and not input):
                  print("Button Released rotating -90 degrees")
                  print("Input="+str(input))
-                 self.closeGarageDoor()
-                 time.sleep(1)
-                 releasedUp = 0
-                 pushedDown = 0
 
-             #p.ChangeDutyCycle(7.5) #0
-             #time.sleep(1)
-             #p.ChangeDutyCycle(14.5) #-90
-             #time.sleep(1)
-             #p.ChangeDutyCycle(2.5) #90
-             #time.sleep(1)
+                 print("Robomow is leaving garage.")
+                 print("   Lets wait 60 seconds and close the door")
+                 time.sleep(30)
+
+                 self.closeGarageDoor()
+                 GarageOpener.releasedUp = 0
+                 GarageOpener.pushedDown = 0
+
        except KeyboardInterrupt:
           GPIO.cleanup()
 
@@ -130,6 +172,19 @@ class GarageOpener:
        print("Releasing GarageOpener") 
        GPIO.cleanup()
 
+    def run(self,garageMonitor):
+       print("Running GarageOpener main loop")
+       try:
+           while True:
+              if (garageMonitor.run() == False):
+                 break
+              self.checkLimitSwitch()
+       except KeyboardInterrupt:
+           pass
+       finally:
+           print("Cleaning up")
+           GPIO.cleanup()
+           garageMonitor.cleanup() 
 
 def main():
 
@@ -149,11 +204,12 @@ def main():
        if args["door"] == 'close':
           garageOpener.closeGarageDoor()
     elif args.get("testswitch",True):
-       garageOpener.testLimitSwitch()
+       garageOpener.checkLimitSwitch()
     elif args.get("record"):
        garageMonitor.startRecording(args["record"])
     else:
-       garageMonitor.run()
+       garageOpener.closeGarageDoor()
+       garageOpener.run(garageMonitor)
 
 
 if __name__ == '__main__':
