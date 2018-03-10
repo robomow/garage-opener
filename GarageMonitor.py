@@ -25,6 +25,7 @@ class GarageMonitor():
     driveWayEntryCnt = 0
     #driveWayEntry = [[11,341],[13,342],[16,343], [11,281], [16,275]
     driveWayContours = [numpy.array([[0,250],[250,200],[400,300],[550,500],[550,600],[70,600],[70,470],[0,500],[0,250]], dtype=numpy.int32)]
+    driveWayExitContours = [numpy.array([[770,450],[740,250],[700,200],[670,200],[640,250],[600,450],[770,450]], dtype=numpy.int32)]
 
     def __init__(self,videoSource):
        print("Initialize Garage Monitor")
@@ -41,6 +42,14 @@ class GarageMonitor():
     def notifyVehicleEntryDetected(self,frame):
        for subscriber in self.subscriberList:
            subscriber.notifyVehicleEntryDetected(self)
+
+    def drawDrivewayExit(self,frame):
+       posStr = "Time to"
+       cv2.putText(frame,posStr, (710,410), cv2.FONT_HERSHEY_SIMPLEX, 0.6,colors['blue'],2)
+       posStr = "Close Garage Door"
+       cv2.putText(frame,posStr, (700,480), cv2.FONT_HERSHEY_SIMPLEX, 0.6,colors['blue'],2)
+       for cnt in GarageMonitor.driveWayExitContours:
+          cv2.drawContours(frame,[cnt],0,(255,255,255),2)
 
     def drawDriveway(self,frame):
        cv2.line(frame,(00,500),(70,470),(0,255,0),2)
@@ -105,12 +114,13 @@ class GarageMonitor():
        i = 1
        for (x,y,w,h) in watches:
           if i == 1:
-            cv2.rectangle(frame,(x,y),(x+w,y+h),(255,255,0),2)
+            cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
             #posStr = "i=" + str(i)
             posStr = "  found [" + str(x)+","+str(y)+","+str(w)+","+str(h)+"]"
             cv2.putText(frame,posStr, (int(x),int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.6,colors['blue'],2)
             print(posStr)
              
+            self.drawDrivewayExit(frame)
             for cnt in GarageMonitor.driveWayContours:
                  dist = cv2.pointPolygonTest(cnt,(x,y),False)
                  if (dist >= 0 ):

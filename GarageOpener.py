@@ -11,6 +11,7 @@ import RPi.GPIO as GPIO
 import time
 
 from time import sleep
+import pusher
 
 #
 # Initialize limit switch
@@ -53,13 +54,42 @@ ap.add_argument("-r", "--record",
     help="starts video recording for seconds specified")
 args = vars(ap.parse_args())
 
-
+#
+# The GarageOpener class manages all the operations that can be performed on 
+# the Robomow garage.  This includes opening/closing the garage
+#
+# It subscribes to the GarageMonitor notifications and performs the
+# appropriate action when the notification event occurs
+#
+# The GarageOpener also used the pusher.com technology to broadcast 
+# the event to interested parties.  (i.e. a web or mobile app) after
+# an action is performed
+#
 class GarageOpener:
+    PUSHER_APP_ID = '487778'
+    PUSHER_KEY = 'cc46da1883d0ec0a6197' 
+    PUSHER_SECRET = 'cff575fc033daf5660a2'
+    PUSHER_CLUSTER = 'us2'
+    PUSHER_GARAGE_CHANNEL = 'robomow' 
+    PUSHER_GARAGE_EVENT = 'garage-event'
+
     doorOpen = False
     # Limit Switch variables
     pushedDown = 0
     releasedUp = 1
     prev_input = 0
+    pusherClient = None
+
+    def __init__(self):
+        print("Initializing the GarageOpener")
+        GarageOpener.pusherClient = pusher.Pusher(
+           app_id=GarageOpener.PUSHER_APP_ID,
+           key=GarageOpener.PUSHER_KEY,
+           secret=GarageOpener.PUSHER_SECRET,
+           cluster=GarageOpener.PUSHER_CLUSTER,
+            ssl=True
+        )
+
 
     def notifyVehicleDetected(self, image):
         a=1
@@ -78,47 +108,10 @@ class GarageOpener:
        time.sleep(2.0)
        garageCloser.ChangeDutyCycle(7.5)
        print("7.5")
-       time.sleep(2)
 
-    def closeGarageDoor2(self):
-       print("Opening Garage Door")
-       garageCloser.start(7.5)
-       garageCloser.ChangeDutyCycle(6.5)
-       time.sleep(0.2)
-       print("6.5")
-       garageCloser.ChangeDutyCycle(6.0)
-       time.sleep(0.2)
-       print("6.0")
-       garageCloser.ChangeDutyCycle(5.5)
-       time.sleep(0.2)
-       print("5.5")
-       garageCloser.ChangeDutyCycle(5.0)
-       time.sleep(0.2)
-       print("5.0")
-       garageCloser.ChangeDutyCycle(4.5)
-       print("4.5")
-       time.sleep(0.2)
-       garageCloser.ChangeDutyCycle(4.0)
-       print("4.0")
-       time.sleep(0.2)
-       garageCloser.ChangeDutyCycle(3.5)
-       print("3.5")
-       time.sleep(0.2)
-       garageCloser.ChangeDutyCycle(3.0)
-       print("3.0")
-       time.sleep(0.2)
-       garageCloser.ChangeDutyCycle(2.5)
-       print("2.5")
-       time.sleep(0.2)
-       garageCloser.ChangeDutyCycle(2.0)
-       print("2.0")
-       time.sleep(0.2)
-       garageCloser.ChangeDutyCycle(0.0)
-       #print("2.5")
-       time.sleep(2)
-       garageCloser.ChangeDutyCycle(7.5)
-       print("12.5")
-       time.sleep(2)
+       GarageOpener.pusherClient.trigger(GarageOpener.PUSHER_GARAGE_CHANNEL, GarageOpener.PUSHER_GARAGE_EVENT, {'message': 'Robomow Garage has been successfully closed'})
+       time.sleep(5)
+
      
     def openGarageDoor(self):
        print("Opening Garage Door")
@@ -132,6 +125,8 @@ class GarageOpener:
            cnt = cnt + 1
            garageOpener.step(100, Adafruit_MotorHAT.FORWARD, Adafruit_MotorHAT.DOUBLE)
 
+       GarageOpener.pusherClient.trigger(GarageOpener.PUSHER_GARAGE_CHANNEL, GarageOpener.PUSHER_GARAGE_EVENT, {'message': 'Robomow Garage has been successfully opened'})
+       time.sleep(3)
 
     def checkLimitSwitch(self):
        print("Testing Limit Switch")
