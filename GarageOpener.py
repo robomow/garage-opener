@@ -66,10 +66,14 @@ args = vars(ap.parse_args())
 # an action is performed
 #
 class GarageOpener:
-    PUSHER_APP_ID = '487778'
-    PUSHER_KEY = 'cc46da1883d0ec0a6197' 
-    PUSHER_SECRET = 'cff575fc033daf5660a2'
-    PUSHER_CLUSTER = 'us2'
+    #PUSHER_APP_ID = '487778'
+    PUSHER_APP_ID = '489803'
+    #PUSHER_KEY = 'cc46da1883d0ec0a6197' 
+    PUSHER_KEY = 'dafdd16435b9b98c88fd' 
+    #PUSHER_SECRET = 'cff575fc033daf5660a2'
+    PUSHER_SECRET = 'eef1bc8f97c689aea0a4'
+    #PUSHER_CLUSTER = 'us2'
+    PUSHER_CLUSTER = 'mt1'
     PUSHER_GARAGE_CHANNEL = 'robomow' 
     PUSHER_GARAGE_EVENT = 'garage-event'
 
