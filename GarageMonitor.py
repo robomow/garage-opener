@@ -26,7 +26,8 @@ class GarageMonitor():
     driveWayEntryCnt = 0
     #driveWayEntry = [[11,341],[13,342],[16,343], [11,281], [16,275]
     driveWayContours = [numpy.array([[0,250],[250,200],[400,300],[550,500],[550,600],[70,600],[70,470],[0,500],[0,250]], dtype=numpy.int32)]
-    driveWayExitContours = [numpy.array([[770,450],[740,250],[700,200],[670,200],[640,250],[600,450],[770,450]], dtype=numpy.int32)]
+    #driveWayExitContours = [numpy.array([[770,450],[740,250],[700,200],[670,200],[640,250],[600,450],[770,450]], dtype=numpy.int32)]
+    driveWayExitContours = [numpy.array([[790,450],[790,150],[590,100],[390,120],[550,250],[575,350],[790,450]], dtype=numpy.int32)]
     out = None
 
     def __init__(self,videoSource,videoDest):
