@@ -8,6 +8,7 @@ import cv2
 import argparse
 import numpy
 import csv
+import subprocess
 
 # open a pointer to the video stream and start the FPS timer
 
@@ -26,12 +27,17 @@ class GarageMonitor():
     #driveWayEntry = [[11,341],[13,342],[16,343], [11,281], [16,275]
     driveWayContours = [numpy.array([[0,250],[250,200],[400,300],[550,500],[550,600],[70,600],[70,470],[0,500],[0,250]], dtype=numpy.int32)]
     driveWayExitContours = [numpy.array([[770,450],[740,250],[700,200],[670,200],[640,250],[600,450],[770,450]], dtype=numpy.int32)]
+    out = None
 
-    def __init__(self,videoSource):
+    def __init__(self,videoSource,videoDest):
        print("Initialize Garage Monitor")
        self.subscriberList = []
        self.stream = cv2.VideoCapture(videoSource)
-       
+       fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+       if (videoDest != None):
+          self.out = cv2.VideoWriter(videoDest,fourcc, 15.0, (800,600))
+       else:
+          self.out = None 
     def addSubscriber(self, subscriber):
        self.subscriberList.append(subscriber)
 
@@ -92,7 +98,7 @@ class GarageMonitor():
 
     def checkDrivewayEntry(self,x,y):
        GarageMonitor.driveWayEntryCnt = GarageMonitor.driveWayEntryCnt + 1
-       if (GarageMonitor.driveWayEntryCnt > 30):
+       if (GarageMonitor.driveWayEntryCnt > 4):
            GarageMonitor.driveWayEntryCnt = 0
            return True
        else:
@@ -135,10 +141,46 @@ class GarageMonitor():
             self.notifyVehicleDetected(frame)
           i=i+1
        cv2.imshow("Frame", frame)
+       self.out.write(frame)
     
+    #
+    # scp the file over
+    #
+    def copyInternalCameraClip(self):
+        p = subprocess.Popen(["scp", myfile, destination])
+        sts = os.waitpid(p.pid, 0)
+        return True    
+
+    #
+    # combine the internal video clip with the external video clip
+    # so they can be viewed at the same time
+    #
+    def combineVideos(self):
+        self.copyInternalCameraClip()
+        outsiedeVideo = cv2.VideoCapture("oustide.avi")
+        insideVideo = cv2.VideoCapture("inside.avi")
+        while(outsideVideo.isOpened()):
+            ret, outFrame = outsideVideo.read()
+            ret, inFrame = outsideVideo.read()
+
+            inFrameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            npVertical = np.vstack((outFrame, inFrameGray))
+
+            npVerticalConcat = np.concatenate((outFrame, inFrameGray), axis=0)
+            cv2.imshow("combind",npVerticalConcat)
+
+
+        oustideVideo.release()
+        insideVideo.release()
+        
+          
+
+        
     def cleanup(self):
         self.stream.release()
         cv2.destroyAllWindows() 
+        if self.out != None:
+           self.out.release()
         
     # monitors the video camera for activity
     def run(self):
@@ -160,7 +202,9 @@ class GarageMonitor():
               return False
  
            return True
+
     def inspectFrame(self):
        print("Inspect frame...")
+
 
 

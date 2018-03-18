@@ -2,10 +2,17 @@
 from Adafruit_MotorHAT import Adafruit_MotorHAT, Adafruit_DCMotor, Adafruit_StepperMotor
 import atexit
 
+import subprocess
+
 from interface import implements, Interface
 import GarageMonitorSubscriber
 from GarageMonitor import GarageMonitor
 import argparse
+import cv2
+import numpy as np
+import os
+import threading
+
 
 import RPi.GPIO as GPIO
 import time
@@ -50,6 +57,10 @@ ap.add_argument("-d", "--door",
     help="options open/close")
 ap.add_argument("-t", "--testswitch",
     help="test limit switch")
+ap.add_argument("-c", "--copy",
+    help="combine video recordings")
+ap.add_argument("-u", "--upload",
+    help="upload vidos")
 ap.add_argument("-r", "--record",
     help="starts video recording for seconds specified")
 args = vars(ap.parse_args())
@@ -66,10 +77,14 @@ args = vars(ap.parse_args())
 # an action is performed
 #
 class GarageOpener:
-    PUSHER_APP_ID = '487778'
-    PUSHER_KEY = 'cc46da1883d0ec0a6197' 
-    PUSHER_SECRET = 'cff575fc033daf5660a2'
-    PUSHER_CLUSTER = 'us2'
+    #PUSHER_APP_ID = '487778'
+    PUSHER_APP_ID = '489803'
+    #PUSHER_KEY = 'cc46da1883d0ec0a6197' 
+    PUSHER_KEY = 'dafdd16435b9b98c88fd' 
+    #PUSHER_SECRET = 'cff575fc033daf5660a2'
+    PUSHER_SECRET = 'eef1bc8f97c689aea0a4'
+    #PUSHER_CLUSTER = 'us2'
+    PUSHER_CLUSTER = 'mt1'
     PUSHER_GARAGE_CHANNEL = 'robomow' 
     PUSHER_GARAGE_EVENT = 'garage-event'
 
@@ -79,6 +94,7 @@ class GarageOpener:
     releasedUp = 1
     prev_input = 0
     pusherClient = None
+    stepperThread = threading.Thread()
 
     def __init__(self):
         print("Initializing the GarageOpener")
@@ -100,6 +116,24 @@ class GarageOpener:
         if (GarageOpener.doorOpen == False):
             self.openGarageDoor()
 
+    #
+    # scp the file over
+    #
+    def copyInternalCameraClip(self):
+        p = subprocess.Popen(["scp", "pi@192.168.1.31:/home/pi/data/videos/garage-opener-internal.h264","/home/pi/data/videos"])
+        sts = os.waitpid(p.pid, 0)
+        return True
+
+    def uploadVideos(self):
+        print("uploadVideos")
+        #self.copyInternalCameraClip();
+        #p = subprocess.Popen(["youtube-upload", "--title=\"Robomow Garage Entry\"","--description=\"vidoe of robomow entering the garage\"","--client-secrets=/home/pi/youtube/client_secrets.json","/home/pi/data/videos/garage-opener-external.avi"])
+        #sts = os.waitpid(p.pid, 0)
+        #p = subprocess.Popen(["youtube-upload", "--title=\"Robomow Garage Entry\"","--description=\"vidoe of robomow entering the garage\"","--client-secrets=/home/pi/youtube/client_secrets.json","/home/pi/data/videos/garage-opener-internal.h264"])
+        #sts = os.waitpid(p.pid, 0)
+      
+
+       
     def closeGarageDoor(self):
        print("Closing Garage Door")
        GarageOpener.doorOpen = False
@@ -111,10 +145,10 @@ class GarageOpener:
 
        GarageOpener.pusherClient.trigger(GarageOpener.PUSHER_GARAGE_CHANNEL, GarageOpener.PUSHER_GARAGE_EVENT, {'message': 'Robomow Garage has been successfully closed'})
        time.sleep(5)
-
+       self.uploadVideos();
      
-    def openGarageDoor(self):
-       print("Opening Garage Door")
+    def stepperOpenGarageDoor(self):
+       print("Stepper Motor Opening Garage Door")
        GarageOpener.doorOpen = True
        cnt=0
        while (cnt<4):
@@ -128,13 +162,19 @@ class GarageOpener:
        GarageOpener.pusherClient.trigger(GarageOpener.PUSHER_GARAGE_CHANNEL, GarageOpener.PUSHER_GARAGE_EVENT, {'message': 'Robomow Garage has been successfully opened'})
        time.sleep(3)
 
+    def openGarageDoor(self):
+       print("Opening Garage Door")
+       if not self.stepperThread.isAlive():
+           self.stepperThread = threading.Thread(target=self.stepperOpenGarageDoor)
+           self.stepperThread.start()
+
     def checkLimitSwitch(self):
-       print("Testing Limit Switch")
+       #print("Testing Limit Switch")
 
        try:
           #while True:
              input = GPIO.input(4)
-             print("Input="+str(input))
+             #print("Input="+str(input))
              if ((not GarageOpener.pushedDown) and input):
                  print("Button Pressed Down rotating 90 degrees")
                  print("Input="+str(input))
@@ -181,6 +221,7 @@ class GarageOpener:
            GPIO.cleanup()
            garageMonitor.cleanup() 
 
+
 def main():
 
     if not args.get("video", False):
@@ -189,7 +230,12 @@ def main():
        camera = args["video"]
 
     garageOpener = GarageOpener()
-    garageMonitor = GarageMonitor(camera)
+    if args.get("upload"):
+       garageMonitor = GarageMonitor(camera,None)
+       garageOpener.uploadVideos()
+    else:
+       garageMonitor = GarageMonitor(camera,'/home/pi/data/videos/garage-opener-external.avi')
+
     garageMonitor.addSubscriber(garageOpener)
     
     if args.get("door",True):
@@ -203,7 +249,6 @@ def main():
     elif args.get("record"):
        garageMonitor.startRecording(args["record"])
     else:
-       garageOpener.closeGarageDoor()
        garageOpener.run(garageMonitor)
 
 
